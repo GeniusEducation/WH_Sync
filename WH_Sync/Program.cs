@@ -76,16 +76,21 @@ namespace WH_Sync
                 addid = int.Parse(row["addid"].ToString());
                 phoneid = int.Parse(row["phoneid"].ToString());
 
-                if (addid > 0)
-                    await UpdateContactInfo(false, row["userid"].ToString(), addid.ToString(), row["HomePhone"].ToString(), row["Address"].ToString(), row["City"].ToString(), row["State"].ToString(), row["Country"].ToString(), row["Zip"].ToString());
-                else
-                    await LoadContactInfo(false,row["userid"].ToString(), row["HomePhone"].ToString(), row["Address"].ToString(), row["City"].ToString(), row["State"].ToString(), row["Country"].ToString(), row["Zip"].ToString());
+                if (!String.IsNullOrWhiteSpace(row["Address"].ToString()))
+                {
+                    if (addid > 0)
+                        await UpdateContactInfo(false, row["userid"].ToString(), addid.ToString(), row["HomePhone"].ToString(), row["Address"].ToString(), row["City"].ToString(), row["State"].ToString(), row["Country"].ToString(), row["Zip"].ToString());
+                    else
+                        await LoadContactInfo(false, row["userid"].ToString(), row["HomePhone"].ToString(), row["Address"].ToString(), row["City"].ToString(), row["State"].ToString(), row["Country"].ToString(), row["Zip"].ToString());
+                }
 
-                if (phoneid > 0)
-                    await UpdateContactInfo(true, row["userid"].ToString(), phoneid.ToString(), row["HomePhone"].ToString(), row["Address"].ToString(), row["City"].ToString(), row["State"].ToString(), row["Country"].ToString(), row["Zip"].ToString());
-                else
-                    await LoadContactInfo(true, row["userid"].ToString(), row["HomePhone"].ToString(), row["Address"].ToString(), row["City"].ToString(), row["State"].ToString(), row["Country"].ToString(), row["Zip"].ToString());
-
+                if (!String.IsNullOrWhiteSpace(row["HomePhone"].ToString()))
+                {
+                    if (phoneid > 0)
+                        await UpdateContactInfo(true, row["userid"].ToString(), phoneid.ToString(), row["HomePhone"].ToString(), row["Address"].ToString(), row["City"].ToString(), row["State"].ToString(), row["Country"].ToString(), row["Zip"].ToString());
+                    else
+                        await LoadContactInfo(true, row["userid"].ToString(), row["HomePhone"].ToString(), row["Address"].ToString(), row["City"].ToString(), row["State"].ToString(), row["Country"].ToString(), row["Zip"].ToString());
+                }
 
             }
 
@@ -207,12 +212,15 @@ namespace WH_Sync
         static private async Task LoadContactInfo(bool isPhone, string userid, string phone, string add1, string city, string state, string country, string zip)
         {
 
-            string url = "https://bethtfiloh.myschoolapp.com/api/user/{CONTACTTYPE}foruser?t={TOKEN}&{USERID}";
+            string url = "https://bethtfiloh.myschoolapp.com/api/user/{CONTACTTYPE}foruser?t={TOKEN}&userID={USERID}";
             url = url.Replace("{TOKEN}", token);
             url = url.Replace("{USERID}", userid);
 
 
-            string addData = string.Format("{{\"UserId\":{0},\"AddressLine1\":\"{1}\",\"City\":\"{2}\",\"StateShort\":{3},\"Country\":\"{4}\",\"ZipCode\":{5},\"TypeId\":981}}", userid, add1, city, state, country, zip);
+            //string addData = string.Format("{{\"UserId\":{0},\"AddressLine1\":\"{1}\",\"City\":\"{2}\",\"StateShort\":{3},\"Country\":\"{4}\",\"ZipCode\":{5},\"TypeId\":981}}", userid, add1, city, state, country, zip);
+            string addData = $@"{{""UserID"":{userid},""AddressLine1"":""{add1}"",""City"":""{city}"",""StateShort"":""{state}"",""Country"":""{country}"",""ZipCode"":{zip},""TypeId"":981}}";
+	    //,""AddressTypeLink"": [{{""TypeId"": 981, ""UserId"": {userid}, ""Type"": ""Home"",""SortOrder"": 0, ""Shared"": false}}]}}";
+
             string phoneData = string.Format("{{\"UserId\":{0},\"PhoneNumber\":\"{1}\",\"TypeId\":1472}}", userid, phone);
 
             var addContent = new StringContent(addData, System.Text.Encoding.UTF8, "application/json");
@@ -239,7 +247,8 @@ namespace WH_Sync
 
             if (result.IsSuccessStatusCode)//.StatusCode == HttpStatusCode.OK)
             {
-                string newid = await result.Content.ReadAsStringAsync();
+                string jnewid = await result.Content.ReadAsStringAsync();
+                string newid = JObject.Parse(jnewid.ToString()).GetValue("Message").ToString();
 
                 if (!isPhone)
                     DBConnection.InsertAddress(userid, newid);
@@ -261,7 +270,10 @@ namespace WH_Sync
             url = url.Replace("{ID}", contactid);
 
 
-            string addData = string.Format("{{\"UserId\":{5},\"AddressLine1\":\"{0}\",\"City\":\"{1}\",\"StateShort\":\"{2}\",\"Country\":\"{3}\",\"ZipCode\":\"{4}\",\"TypeId\":981}}", add1, city, state, country, zip, userid);
+            //string addData = string.Format("{{\"UserId\":{5},\"AddressLine1\":\"{0}\",\"City\":\"{1}\",\"StateShort\":\"{2}\",\"Country\":\"{3}\",\"ZipCode\":\"{4}\",\"TypeId\":981}}", add1, city, state, country, zip, userid);
+            string addData = $@"{{""UserID"":{userid},""AddressLine1"":""{add1}"",""City"":""{city}"",""StateShort"":""{state}"",""Country"":""{country}"",""ZipCode"":{zip},""TypeId"":981
+	    ,""AddressTypeLink"": [{{""TypeId"": 981, ""UserId"": {userid}, ""Type"": ""Home"",""SortOrder"": 0, ""Shared"": false}}]}}";
+
             string phoneData = string.Format("{{\"UserId\":{1},\"PhoneNumber\":\"{0}\",\"TypeId\":1472}}",  phone, userid);
 
             var addContent = new StringContent(addData, System.Text.Encoding.UTF8, "application/json");
